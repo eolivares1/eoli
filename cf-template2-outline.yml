@@ -1,0 +1,82 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deploy EC2 instances and ALB for Project 1 - Outline of Resources/Parameters
+
+Parameters:
+# Need to ask user for name of network stack
+  NetworkStackName:
+    Description: >-
+      Name of an active CloudFormation stack that contains the networking
+      resources, such as the VPC and subnet that will be used in this stack.
+    Type: String
+    MinLength: 1
+    MaxLength: 255
+    AllowedPattern: '^[a-zA-Z][-a-zA-Z0-9]*$'
+    Default: cf-template1-outline
+
+
+Resources:
+
+  # Optional BastionHostInstance would go here
+
+  WebServerInstance1:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      SubnetId: "subnet-04c96bf823ec209aa"
+      ImageId: "ami-0c74a08e7d9ea5e67"
+      SecurityGroupIds: 
+        - "sg-08c2c5e5579f7b849"
+
+  WebServerInstance2:
+      Type: AWS::EC2::Instance
+      Properties:
+        SubnetId: "subnet-03cc6f122cc61a342"
+        ImageId: "ami-0c74a08e7d9ea5e67"
+        SecurityGroupIds:
+          - "sg-08c2c5e5579f7b849"
+
+  ALBListener:
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: "HTTP"
+      DefaultActions:
+        - Type: "forward"
+
+  ALBTargetGroup:
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Properties: 
+      Port: 80    
+      Protocol: "HTTP"
+      TargetType: "instance"
+      VpcId: "vpc-09eccefc8d7b3cb9a"
+
+
+  ApplicationLoadBalancer:
+    Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+    Properties:
+      Name: "applicationloadbalancer"
+      Scheme: "internet-facing"
+      Type: "application"
+      Subnets:
+        - Fn::ImportValue:
+            Fn::Sub: "${NetworkStackName}-PublicSubnet1"
+        - Fn::ImportValue:
+            Fn::Sub: "${NetworkStackName}-PublicSubnet2"
+      SecurityGroups:
+        - Fn::ImportValue:
+            Fn::Sub: "${NetworkStackName}-ALBSG"
+      IpAddressType: "ipv4"
+
+
+
+
+Outputs:
+# This is an example of the complete YAML code for outputting the VPC information and also exporting the VPC ID for use
+# by another template
+  ApplicationLoadBalancer:
+    Description: The created loadbalancer
+    Value: !Ref ApplicationLoadBalancer 
+# Need the DNS/URL of the ApplicationLoadBalancer
+
+
