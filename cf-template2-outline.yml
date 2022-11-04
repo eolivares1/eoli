@@ -1,6 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Deploy EC2 instances and ALB for Project 1 - Outline of Resources/Parameters
-
 Parameters:
 # Need to ask user for name of network stack
   NetworkStackName:
@@ -13,27 +12,26 @@ Parameters:
     AllowedPattern: '^[a-zA-Z][-a-zA-Z0-9]*$'
     Default: cf-template1-outline
 
-
 Resources:
-
   # Optional BastionHostInstance would go here
-
   WebServerInstance1:
     Type: "AWS::EC2::Instance"
     Properties:
-      SubnetId: "subnet-04c96bf823ec209aa"
+      SubnetId:
+        Fn::ImportValue:
+         Fn::Sub: "${NetworkStackName}-PrivateSubnet1"
       ImageId: "ami-0c74a08e7d9ea5e67"
-      SecurityGroupIds: 
-        - "sg-08c2c5e5579f7b849"
-
+      #SecurityGroupIds: 
+       # - "sg-08c2c5e5579f7b849"
   WebServerInstance2:
-      Type: AWS::EC2::Instance
-      Properties:
-        SubnetId: "subnet-03cc6f122cc61a342"
-        ImageId: "ami-0c74a08e7d9ea5e67"
-        SecurityGroupIds:
-          - "sg-08c2c5e5579f7b849"
-
+    Type: AWS::EC2::Instance
+    Properties:
+      SubnetId:
+        Fn::ImportValue:
+         Fn::Sub: "${NetworkStackName}-PrivateSubnet1"
+      ImageId: "ami-0c74a08e7d9ea5e67"
+      #SecurityGroupIds:
+       # - "sg-08c2c5e5579f7b849"
   ALBListener:
     Type: "AWS::ElasticLoadBalancingV2::Listener"
     Properties:
@@ -41,16 +39,15 @@ Resources:
       Port: 80
       Protocol: "HTTP"
       DefaultActions:
-        - Type: "forward"
-
+       - Type: "forward"
+       - TargetGroupArn: !Ref ALBTargetGroup
   ALBTargetGroup:
     Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
     Properties: 
       Port: 80    
       Protocol: "HTTP"
       TargetType: "instance"
-      VpcId: "vpc-09eccefc8d7b3cb9a"
-
+      VpcId: "vpc-0ab8f940e0d8ad508"
 
   ApplicationLoadBalancer:
     Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
@@ -69,8 +66,6 @@ Resources:
       IpAddressType: "ipv4"
 
 
-
-
 Outputs:
 # This is an example of the complete YAML code for outputting the VPC information and also exporting the VPC ID for use
 # by another template
@@ -78,5 +73,3 @@ Outputs:
     Description: The created loadbalancer
     Value: !Ref ApplicationLoadBalancer 
 # Need the DNS/URL of the ApplicationLoadBalancer
-
-
