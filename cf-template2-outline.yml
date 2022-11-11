@@ -21,8 +21,9 @@ Resources:
         Fn::ImportValue:
          Fn::Sub: "${NetworkStackName}-PrivateSubnet1"
       ImageId: "ami-0c74a08e7d9ea5e67"
-      #SecurityGroupIds: 
-       # - "sg-08c2c5e5579f7b849"
+      SecurityGroupIds: 
+        - Fn::ImportValue:
+            Fn::Sub: "${NetworkStackName}-WebInstanceSG"
   WebServerInstance2:
     Type: AWS::EC2::Instance
     Properties:
@@ -30,8 +31,9 @@ Resources:
         Fn::ImportValue:
          Fn::Sub: "${NetworkStackName}-PrivateSubnet1"
       ImageId: "ami-0c74a08e7d9ea5e67"
-      #SecurityGroupIds:
-       # - "sg-08c2c5e5579f7b849"
+      SecurityGroupIds:
+        - Fn::ImportValue:
+            Fn::Sub: "${NetworkStackName}-WebInstanceSG"
   ALBListener:
     Type: "AWS::ElasticLoadBalancingV2::Listener"
     Properties:
@@ -39,16 +41,20 @@ Resources:
       Port: 80
       Protocol: "HTTP"
       DefaultActions:
-       - Type: "forward"
-       - TargetGroupArn: !Ref ALBTargetGroup
+        - Type: "forward"
+          TargetGroupArn: !Ref ALBTargetGroup
   ALBTargetGroup:
     Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
     Properties: 
       Port: 80    
       Protocol: "HTTP"
+      Targets:
+        - Id: !Ref WebServerInstance1
+        - Id: !Ref WebServerInstance2
       TargetType: "instance"
-      VpcId: "vpc-0ab8f940e0d8ad508"
-
+      VpcId:
+        Fn::ImportValue:
+         Fn::Sub: "${NetworkStackName}-VPCId"
   ApplicationLoadBalancer:
     Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
     Properties:
@@ -71,5 +77,5 @@ Outputs:
 # by another template
   ApplicationLoadBalancer:
     Description: The created loadbalancer
-    Value: !Ref ApplicationLoadBalancer 
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
 # Need the DNS/URL of the ApplicationLoadBalancer
