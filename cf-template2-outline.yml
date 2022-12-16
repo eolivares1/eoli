@@ -13,7 +13,23 @@ Parameters:
     Default: cf-template1-outline
 
 Resources:
-  # Optional BastionHostInstance would go here
+  BastionHost:
+    Type: AWS::EC2::Instance
+    Properties: 
+      ImageId: "ami-0c74a08e7d9ea5e67"
+      InstanceType: "t2.micro"
+      KeyName: "Project2"
+      SecurityGroupIds: 
+        - Fn::ImportValue:
+            Fn::Sub: "${NetworkStackName}-BastionHostSG"
+      SubnetId:
+        Fn::ImportValue:
+         Fn::Sub: "${NetworkStackName}-PublicSubnet1"
+      Tags: 
+        - Key: Name
+          Value: "BastionHost"
+
+  
   WebServerInstance1:
     Type: "AWS::EC2::Instance"
     Properties:
@@ -21,9 +37,11 @@ Resources:
         Fn::ImportValue:
          Fn::Sub: "${NetworkStackName}-PrivateSubnet1"
       ImageId: "ami-0c74a08e7d9ea5e67"
+      KeyName: "Project2"
       SecurityGroupIds: 
         - Fn::ImportValue:
             Fn::Sub: "${NetworkStackName}-WebInstanceSG"
+
   WebServerInstance2:
     Type: AWS::EC2::Instance
     Properties:
@@ -31,9 +49,11 @@ Resources:
         Fn::ImportValue:
          Fn::Sub: "${NetworkStackName}-PrivateSubnet1"
       ImageId: "ami-0c74a08e7d9ea5e67"
+      KeyName: "Project2"
       SecurityGroupIds:
         - Fn::ImportValue:
             Fn::Sub: "${NetworkStackName}-WebInstanceSG"
+
   ALBListener:
     Type: "AWS::ElasticLoadBalancingV2::Listener"
     Properties:
@@ -43,6 +63,7 @@ Resources:
       DefaultActions:
         - Type: "forward"
           TargetGroupArn: !Ref ALBTargetGroup
+
   ALBTargetGroup:
     Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
     Properties: 
@@ -55,6 +76,7 @@ Resources:
       VpcId:
         Fn::ImportValue:
          Fn::Sub: "${NetworkStackName}-VPCId"
+
   ApplicationLoadBalancer:
     Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
     Properties:
@@ -78,4 +100,4 @@ Outputs:
   ApplicationLoadBalancer:
     Description: The created loadbalancer
     Value: !GetAtt ApplicationLoadBalancer.DNSName
-# Need the DNS/URL of the ApplicationLoadBalancer
+# Need the DNS/URL of the ApplicationLoadBala
