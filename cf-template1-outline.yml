@@ -26,9 +26,6 @@ Resources:
 
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
-    DependsOn:
-      - InternetGateway
-      - VPC
     Properties:
       VpcId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
@@ -37,7 +34,6 @@ Resources:
 
   PublicSubnet1:
     Type: AWS::EC2::Subnet
-    DependsOn: VPC
     Properties:
       VpcId: !Ref VPC
       CidrBlock: 10.0.1.0/24
@@ -45,6 +41,7 @@ Resources:
         - 0
         - !GetAZs 
           Ref: AWS::Region
+      MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
           Value: Public Subnet 1     
@@ -58,13 +55,13 @@ Resources:
         - 1
         - !GetAZs 
           Ref: AWS::Region
+      MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
           Value: Public Subnet 2
 
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
-    DependsOn: VPC
     Properties:
       VpcId: !Ref VPC
       CidrBlock: 10.0.3.0/24
@@ -78,7 +75,6 @@ Resources:
 
   PrivateSubnet2:
     Type: AWS::EC2::Subnet
-    DependsOn: VPC
     Properties:
       VpcId: !Ref VPC
       CidrBlock: 10.0.4.0/24
@@ -89,7 +85,21 @@ Resources:
       Tags:
         - Key: Name
           Value: Private Subnet 2     
-
+  EIP:
+    Type: AWS::EC2::EIP
+    Properties: 
+      Domain: !Ref VPC
+  
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties: 
+      AllocationId: !GetAtt EIP.AllocationId
+      ConnectivityType: "public"
+      #PrivateIpAddress: String
+      SubnetId: !Ref PublicSubnet1
+      Tags: 
+        - Key: Name
+          Value: "Project-NAT"
 
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
@@ -99,9 +109,23 @@ Resources:
         - Key: Name
           Value: Public Route Table
 
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: Private Route Table
+        
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
   PublicRoute:
     Type: AWS::EC2::Route
-    DependsOn: AttachGateway
     Properties:
       RouteTableId: !Ref PublicRouteTable
       DestinationCidrBlock: 0.0.0.0/0
@@ -119,11 +143,22 @@ Resources:
       SubnetId: !Ref PublicSubnet2
       RouteTableId: !Ref PublicRouteTable
 
+  PrivateSubnetRouteTableAssociation1:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnetRouteTableAssociation2:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
 #Security Groups
 
   ALBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
-    DependsOn: VPC
     Properties:
       GroupName: ALB-SG
       GroupDescription: Load Balancer SG
@@ -157,6 +192,22 @@ Resources:
           Value: Web-SG
 
   # Optional BastionSercurityGroup if you build a Bastion Host
+  BastionHostSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupName: BastionHost-SG
+      GroupDescription: Bastion Host SG
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: BastionHost-SG
+
+
 
 Outputs:
 # This is an example of the complete YAML code for outputting the VPC information and also exporting the VPC ID for use
@@ -208,6 +259,14 @@ Outputs:
     Export:
       Name:
         Fn::Sub: "${AWS::StackName}-WebInstanceSG"
+  
+  BastionHostSecurityGroup:
+    Description: bastion secirity group
+    Value:
+      Ref: BastionHostSecurityGroup
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}-BastionHostSG"
 
   ALBSecurityGroup:
     Description: load balancer security group
